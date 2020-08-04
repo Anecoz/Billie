@@ -5,22 +5,42 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.mapbox.android.core.permissions.PermissionsManager;
+import com.mapbox.mapboxsdk.Mapbox;
+import com.mapbox.mapboxsdk.camera.CameraPosition;
+import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.location.LocationComponent;
+import com.mapbox.mapboxsdk.location.LocationComponentActivationOptions;
+import com.mapbox.mapboxsdk.location.LocationComponentOptions;
+import com.mapbox.mapboxsdk.location.modes.CameraMode;
+import com.mapbox.mapboxsdk.location.modes.RenderMode;
+import com.mapbox.mapboxsdk.maps.MapboxMap;
+import com.mapbox.mapboxsdk.maps.MapboxMapOptions;
+import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
+import com.mapbox.mapboxsdk.maps.Style;
+import com.mapbox.mapboxsdk.maps.SupportMapFragment;
 
-public class MainActivity extends AppCompatActivity implements IAPIObserver {
+
+public class MainActivity extends AppCompatActivity implements IAPIObserver, OnMapReadyCallback {
     private static class APIEventWrapper {
         public APIEventWrapper(APIEvent event, Response response) {
             _event = event;
@@ -31,12 +51,18 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver {
     }
 
     Handler _handler = null;
+    Handler _requestHandler = null;
+    HandlerThread _requestThread = null;
+    boolean _running = false;
 
     private final int REQUEST_ENABLE_BT = 1;
     private final int REQUEST_PERMISSIONS = 2;
 
-    private BluetoothAdapter bluetoothAdapter;
+    LocationComponent _locationComponent;
+    MapboxMap _mapboxMap;
+    Style _mapStyle;
 
+    private BluetoothAdapter bluetoothAdapter;
     private BluetoothAPI _bluetoothApi;
 
     @Override
@@ -73,10 +99,128 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver {
                     Toast.makeText(MainActivity.this, "Disconnected from Bluetooth API", Toast.LENGTH_SHORT).show();
                 }
                 else if (wrapper._event == APIEvent.Response) {
-                    Toast.makeText(MainActivity.this, "BT Resp: " + wrapper._response._val, Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(MainActivity.this, "BT Resp: " + wrapper._response._val, Toast.LENGTH_SHORT).show();
+                    FragmentManager fm = getSupportFragmentManager();
+                    Fragment navHost = fm.getPrimaryNavigationFragment();
+                    FirstFragment fragment = (FirstFragment)navHost.getChildFragmentManager().getFragments().get(0);
+
+                    if (fragment == null) {
+                        Log.e("TAG", "Fragment is null");
+                        return;
+                    }
+
+                    if (wrapper._response._command == (byte)RegMap.M365_SPEED_REG) {
+                        fragment.setSpeed(wrapper._response._val);
+                    }
+                    if (wrapper._response._command == (byte)RegMap.M365_ODOMETER_REG) {
+                        fragment.setOdometer(wrapper._response._val);
+                    }
+                    if (wrapper._response._command == (byte)RegMap.M365_BATT_REG) {
+                        fragment.setBatteryCharge(wrapper._response._val);
+                    }
+                    if (wrapper._response._command == (byte)RegMap.M365_TRIP_KM_REG) {
+                        fragment.setTripKm(wrapper._response._val);
+                    }
+                    if (wrapper._response._command == (byte)RegMap.BATT_VOLTAGE_REG) {
+                        fragment.setBatteryVoltage(wrapper._response._val);
+                    }
+                    if (wrapper._response._command == (byte)RegMap.M365_TRIPTIME_REG) {
+                        fragment.setTripTime(wrapper._response._val);
+                    }
+                    if (wrapper._response._command == (byte)RegMap.M365_FRAMETEMP_REG) {
+                        fragment.setTemp(wrapper._response._val);
+                    }
+                    if (wrapper._response._command == (byte)RegMap.M365_KM_REMAIN_REG) {
+                        fragment.setRange(wrapper._response._val);
+                    }
                 }
             }
         };
+
+        // Setup MapBox view
+        Mapbox.getInstance(this, getString(R.string.mapbox_access_token));
+
+        SupportMapFragment mapFragment;
+        if (savedInstanceState == null) {
+            final FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+
+            MapboxMapOptions options = MapboxMapOptions.createFromAttributes(this, null);
+            options.camera(new CameraPosition.Builder()
+                    .target(new LatLng(58.0, 15.0))
+                    .zoom(15)
+                    .build());
+
+            mapFragment = SupportMapFragment.newInstance(options);
+
+            transaction.add(R.id.container, mapFragment, "com.mapbox.map");
+            transaction.commit();
+        }
+        else {
+            mapFragment = (SupportMapFragment)getSupportFragmentManager().findFragmentByTag("com.mapbox.map");
+        }
+
+        if (mapFragment != null) {
+            mapFragment.getMapAsync(this);
+        }
+    }
+
+    @Override
+    public void onMapReady(@NonNull MapboxMap mapboxMap) {
+        _mapboxMap = mapboxMap;
+        mapboxMap.setStyle(Style.MAPBOX_STREETS, new Style.OnStyleLoaded() {
+            @Override
+            public void onStyleLoaded(@NonNull Style style) {
+                _mapStyle = style;
+                enableLocationComponent();
+            }
+        });
+    }
+
+    @SuppressWarnings( {"MissingPermission"})
+    private void enableLocationComponent() {
+        if (PermissionsManager.areLocationPermissionsGranted(this)) {
+            // Create and customize the LocationComponent's options
+            LocationComponentOptions customLocationComponentOptions = LocationComponentOptions.builder(this)
+                    .elevation(5)
+                    .accuracyAlpha(.3f)
+                    .accuracyColor(Color.RED)
+                    //.foregroundDrawable(R.drawable.android_custom_location_icon)
+                    .build();
+
+            // Get an instance of the component
+            _locationComponent = _mapboxMap.getLocationComponent();
+
+            LocationComponentActivationOptions locationComponentActivationOptions =
+                    LocationComponentActivationOptions.builder(this, _mapStyle)
+                            .locationComponentOptions(customLocationComponentOptions)
+                            .build();
+
+            // Activate with options
+            _locationComponent.activateLocationComponent(locationComponentActivationOptions);
+
+            // Enable to make component visible
+            _locationComponent.setLocationComponentEnabled(true);
+
+            // Set the component's camera mode
+            _locationComponent.setCameraMode(CameraMode.TRACKING);
+
+            // Set the component's render mode
+            _locationComponent.setRenderMode(RenderMode.COMPASS);
+
+            // Add the location icon click listener
+            //_locationComponent.addOnLocationClickListener(this);
+
+            // Add the camera tracking listener. Fires if the map camera is manually moved.
+            //_locationComponent.addOnCameraTrackingChangedListener(this);
+        }
+    }
+
+    private Message createMessage(int direction, int command, int len) {
+        return new Message(
+                direction,
+                RegMap.REG_READ,
+                command,
+                new byte[]{(byte)len});
     }
 
     @Override
@@ -85,6 +229,9 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "Permissions granted! Setting up bluetooth.", Toast.LENGTH_SHORT).show();
                 setupBluetooth();
+                if (_mapboxMap != null && _mapStyle != null) {
+                    enableLocationComponent();
+                }
             }
             else {
                 Toast.makeText(this, "App cannot work without Location and Bluetooth permissions.", Toast.LENGTH_LONG).show();
@@ -95,6 +242,13 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        _running = false;
+        try {
+            _requestThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         if (_bluetoothApi != null) {
             _bluetoothApi.cleanup();
@@ -163,14 +317,6 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver {
         }
     }
 
-    private Message createMessage() {
-        return new Message(
-                RegMap.MASTER_TO_BATT,
-                RegMap.REG_READ,
-                RegMap.BATT_CURRENT_REG,
-                new byte[]{(byte)(RegMap.BATT_CURRENT_LEN)});
-    }
-
     private void connectBluetooth() {
         /*final BluetoothLeScanner leScanner = bluetoothAdapter.getBluetoothLeScanner();
 
@@ -190,6 +336,56 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver {
         _bluetoothApi = new BluetoothAPI(this, device);
         _bluetoothApi.registerObserver(this);
 
-        _bluetoothApi.sendMessage(createMessage());
+        _requestThread = new HandlerThread("RequestThread");
+        _requestThread.start();
+        _requestHandler = new Handler(_requestThread.getLooper());
+
+        _running = true;
+
+        _requestHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                while (_running) {
+                    _bluetoothApi.sendMessage(createMessage(
+                            RegMap.MASTER_TO_M365,
+                            RegMap.M365_SPEED_REG,
+                            RegMap.M365_SPEED_LEN));
+                    _bluetoothApi.sendMessage(createMessage(
+                            RegMap.MASTER_TO_M365,
+                            RegMap.M365_ODOMETER_REG,
+                            RegMap.M365_ODOMETER_LEN));
+                    _bluetoothApi.sendMessage(createMessage(
+                            RegMap.MASTER_TO_M365,
+                            RegMap.M365_TRIP_KM_REG,
+                            RegMap.M365_TRIP_KM_LEN));
+                    _bluetoothApi.sendMessage(createMessage(
+                            RegMap.MASTER_TO_M365,
+                            RegMap.M365_BATT_REG,
+                            RegMap.M365_BATT_LEN));
+                    _bluetoothApi.sendMessage(createMessage(
+                            RegMap.MASTER_TO_BATT,
+                            RegMap.BATT_VOLTAGE_REG,
+                            RegMap.BATT_VOLTAGE_LEN));
+                    _bluetoothApi.sendMessage(createMessage(
+                            RegMap.MASTER_TO_M365,
+                            RegMap.M365_FRAMETEMP_REG,
+                            RegMap.M365_FRAMETEMP_LEN));
+                    _bluetoothApi.sendMessage(createMessage(
+                            RegMap.MASTER_TO_M365,
+                            RegMap.M365_TRIPTIME_REG,
+                            RegMap.M365_TRIPTIME_LEN));
+                    _bluetoothApi.sendMessage(createMessage(
+                            RegMap.MASTER_TO_M365,
+                            RegMap.M365_KM_REMAIN_REG,
+                            RegMap.M365_KM_REMAIN_LEN));
+
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        });
     }
 }

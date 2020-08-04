@@ -4,8 +4,11 @@ public class Message {
     private byte[] _data;
     private int _numParams;
 
+    public int _command;
+
     public Message(int direction, int rw, int command, byte[] params) {
         _numParams = params.length;
+        _command = command;
 
         _data = new byte[_numParams + 8];
 

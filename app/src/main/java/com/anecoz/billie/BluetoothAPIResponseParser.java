@@ -1,7 +1,5 @@
 package com.anecoz.billie;
 
-import android.util.Log;
-
 public class BluetoothAPIResponseParser {
     private final String TAG = "ResponseParser";
 
@@ -10,6 +8,15 @@ public class BluetoothAPIResponseParser {
 
     private short bytesToShort(byte hi, byte lo) {
         return (short)(((hi & 0xFF) << 8) | (lo & 0xFF));
+    }
+
+    private static double round(double value, int places) {
+        if (places < 0) throw new IllegalArgumentException();
+
+        long factor = (long) Math.pow(10, places);
+        value = value * factor;
+        long tmp = Math.round(value);
+        return (double) tmp / factor;
     }
 
     public Response parse(byte[] bytes) {
@@ -30,19 +37,19 @@ public class BluetoothAPIResponseParser {
             response._val = val + " C";
         }
         else if (response._command == (byte)RegMap.M365_ODOMETER_REG) {
-            double val = bytesToShort(bytes[7], bytes[6]) / 100.0;
+            double val = bytesToShort(bytes[7], bytes[6]) / 1000.0;
             response._val = val + " km";
         }
         else if (response._command == (byte)RegMap.M365_SPEED_REG) {
-            double val = bytesToShort(bytes[7], bytes[6]) / 1000.0;
+            double val = round(bytesToShort(bytes[7], bytes[6]) / 1000.0, 1);
             response._val = val + " km/h";
         }
         else if (response._command == (byte)RegMap.M365_TRIP_KM_REG) {
-            double val = bytesToShort(bytes[7], bytes[6]) / 100.0;
+            double val = bytesToShort(bytes[7], bytes[6]) / 1000.0;
             response._val = val + " km";
         }
         else if (response._command == (byte)RegMap.M365_TRIPSPEED_REG) {
-            double val = bytesToShort(bytes[7], bytes[6]) / 1000.0;
+            double val = round(bytesToShort(bytes[7], bytes[6]) / 1000.0, 1);
             response._val = val + " km/h";
         }
         else if (response._command == (byte)RegMap.M365_TRIPTIME_REG) {
@@ -56,6 +63,15 @@ public class BluetoothAPIResponseParser {
         else if (response._command == (byte)RegMap.BATT_CURRENT_REG) {
             double val = bytesToShort(bytes[7], bytes[6]) / 100.0;
             response._val = val + " A";
+        }
+        else if (response._command == (byte)RegMap.BATT_TEMP_REG) {
+            double tmp1 = bytes[7] - 20;
+            double tmp2 = bytes[6] - 20;
+            response._val = "TEMP1: " + tmp1 + " C, TEMP2: " + tmp2 + " C";
+        }
+        else if (response._command == (byte)RegMap.BATT_CHARGE_COUNT_REG) {
+            short val = (short) (bytes[7] + bytes[6]);
+            response._val = val + " times";
         }
 
         return response;

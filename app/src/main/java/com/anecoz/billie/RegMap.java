@@ -59,4 +59,7 @@ public class RegMap {
 
     public static int BATT_HEALTH_REG = 0x3b; // health of battery 0-100, error if less than 60
     public static int BATT_HEALTH_LEN = 2;
+
+    public static int BATT_CHARGE_COUNT_REG = 0x1c;
+    public static int BATT_CHARGE_COUNT_LEN = 2;
 }

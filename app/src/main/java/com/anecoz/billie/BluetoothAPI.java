@@ -38,6 +38,8 @@ public class BluetoothAPI extends BluetoothGattCallback {
     boolean _running = false;
     private Deque<Message> _requestQueue = new LinkedBlockingDeque<>();
     private Deque<Response> _responseQueue = new LinkedBlockingDeque<>();
+    private Message _outgoingMessage = null;
+    private long _timeSinceLastReq = 0;
 
     private ArrayList<IAPIObserver> _observers = new ArrayList<>();
 
@@ -51,27 +53,36 @@ public class BluetoothAPI extends BluetoothGattCallback {
     public BluetoothAPI(Context context, BluetoothDevice device) {
         _context = context;
         _device = device;
-
         _device.connectGatt(_context, false, this);
 
         _running = true;
-
         Runnable r = new Runnable() {
             @Override
             public void run() {
                 while (_running) {
                     if (!_initialized) continue;
 
-                    if (!_requestQueue.isEmpty()) {
-                        Log.i(TAG, "Sending a message");
-                        Message message = _requestQueue.remove();
-                        _writeChar.setValue(message.getData());
-                        _gatt.writeCharacteristic(_writeChar);
-                    }
-
-                    if (!_responseQueue.isEmpty()) {
+                    while (!_responseQueue.isEmpty()) {
                         Response response = _responseQueue.remove();
                         notifyObservers(APIEvent.Response, response);
+                    }
+
+                    if (_outgoingMessage != null) {
+                        long now = System.currentTimeMillis();
+                        if (now - _timeSinceLastReq > 500) {
+                            // Override and consider this a lost request
+                            _outgoingMessage = null;
+                        }
+                        else {
+                            continue;
+                        }
+                    }
+
+                    if (!_requestQueue.isEmpty()) {
+                        _outgoingMessage = _requestQueue.remove();
+                        _writeChar.setValue(_outgoingMessage.getData());
+                        _gatt.writeCharacteristic(_writeChar);
+                        _timeSinceLastReq = System.currentTimeMillis();
                     }
                 }
             }
@@ -97,7 +108,16 @@ public class BluetoothAPI extends BluetoothGattCallback {
     }
 
     public void sendMessage(Message message) {
+        if (msgTypeInQueue(message._command)) return;
         _requestQueue.add(message);
+        Log.i(TAG, "Req queue size: " + _requestQueue.size());
+    }
+
+    private boolean msgTypeInQueue(int command) {
+        for (Message msg : _requestQueue) {
+            if (msg._command == command) return true;
+        }
+        return false;
     }
 
     @Override
@@ -179,7 +199,7 @@ public class BluetoothAPI extends BluetoothGattCallback {
     @Override
     public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
         super.onCharacteristicWrite(gatt, characteristic, status);
-        Log.i(TAG, "onCharacteristicWrite, status: " + status);
+        Log.i(TAG, "onCharacteristicWrite, status: " + status + ", val: " + Arrays.toString(characteristic.getValue()));
     }
 
     @Override
@@ -187,6 +207,7 @@ public class BluetoothAPI extends BluetoothGattCallback {
         super.onCharacteristicChanged(gatt, characteristic);
         Log.i(TAG, "onCharacteristicChanged, val: " + Arrays.toString(characteristic.getValue()));
         _responseQueue.add(_parser.parse(characteristic.getValue()));
+        _outgoingMessage = null;
     }
 
     @Override

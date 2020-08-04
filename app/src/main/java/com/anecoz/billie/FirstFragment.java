@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -23,12 +24,51 @@ public class FirstFragment extends Fragment {
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        view.findViewById(R.id.button_first).setOnClickListener(new View.OnClickListener() {
+        /*view.findViewById(R.id.button_first).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                NavHostFragment.findNavController(FirstFragment.this)
-                        .navigate(R.id.action_FirstFragment_to_SecondFragment);
+                //NavHostFragment.findNavController(FirstFragment.this).navigate(R.id.action_FirstFragment_to_SecondFragment);
             }
-        });
+        });*/
+    }
+
+    public void setSpeed(String speed) {
+        TextView tv =getView().findViewById(R.id.textview_currentspeed);
+        tv.setText(speed);
+    }
+
+    public void setBatteryCharge(String charge) {
+        TextView tv =getView().findViewById(R.id.textview_batterycharge);
+        tv.setText(charge);
+    }
+
+    public void setBatteryVoltage(String voltage) {
+        TextView tv =getView().findViewById(R.id.textview_batteryvoltage);
+        tv.setText(voltage);
+    }
+
+    public void setOdometer(String odometer) {
+        TextView tv =getView().findViewById(R.id.textview_odometer);
+        tv.setText(odometer);
+    }
+
+    public void setTripKm(String trip) {
+        TextView tv =getView().findViewById(R.id.textview_tripkm);
+        tv.setText(trip);
+    }
+
+    public void setTripTime(String time) {
+        TextView tv =getView().findViewById(R.id.textview_triptime);
+        tv.setText(time);
+    }
+
+    public void setTemp(String temp) {
+        TextView tv =getView().findViewById(R.id.textview_temp);
+        tv.setText(temp);
+    }
+
+    public void setRange(String range) {
+        TextView tv =getView().findViewById(R.id.textview_rangekm);
+        tv.setText(range);
     }
 }

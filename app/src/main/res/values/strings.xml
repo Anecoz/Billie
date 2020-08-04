@@ -6,7 +6,12 @@
     <string name="second_fragment_label">Second Fragment</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
+    <string name="na">N/A</string>
+    <string name="trip">Trip</string>
+    <string name="total">Total</string>
 
     <string name="hello_first_fragment">Hello first fragment</string>
     <string name="hello_second_fragment">Hello second fragment. Arg: %1$s</string>
+
+    <string name="mapbox_access_token">pk.eyJ1IjoiYW5lY296IiwiYSI6ImNrZGc4ZjFpejFiNXMyc3Fxcjlka3FnZXUifQ.BQ4SVxP6DyG9arBufxldyg</string>
 </resources>
