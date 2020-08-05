@@ -1,35 +1,58 @@
 package com.anecoz.billie;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.CompoundButton;
+import android.widget.Switch;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.fragment.NavHostFragment;
 
 public class FirstFragment extends Fragment {
+
+    private ControlSwitchListener _listener;
+    Switch _tailSwitch;
+    Switch _lockSwitch;
 
     @Override
     public View onCreateView(
             LayoutInflater inflater, ViewGroup container,
-            Bundle savedInstanceState
-    ) {
+            Bundle savedInstanceState) {
         // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_first, container, false);
+    }
+
+    @Override
+    public void onAttach(@NonNull Context context) {
+        super.onAttach(context);
+        if (context instanceof ControlSwitchListener) {
+            _listener = (ControlSwitchListener)context;
+        }
     }
 
     public void onViewCreated(@NonNull View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        /*view.findViewById(R.id.button_first).setOnClickListener(new View.OnClickListener() {
+        _tailSwitch = (Switch) view.findViewById(R.id.switch_taillight);
+        _lockSwitch = (Switch) view.findViewById(R.id.switch_lock);
+
+        _tailSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
-            public void onClick(View view) {
-                //NavHostFragment.findNavController(FirstFragment.this).navigate(R.id.action_FirstFragment_to_SecondFragment);
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                _listener.onTaillight(b);
             }
-        });*/
+        });
+
+        _lockSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                _listener.onLock(b);
+            }
+        });
     }
 
     public void setSpeed(String speed) {
@@ -70,5 +93,15 @@ public class FirstFragment extends Fragment {
     public void setRange(String range) {
         TextView tv =getView().findViewById(R.id.textview_rangekm);
         tv.setText(range);
+    }
+
+    public void setTailLight(boolean val) {
+        if (_tailSwitch.isChecked() == val) return;
+        _tailSwitch.setChecked(val);
+    }
+
+    public void setLock(boolean val) {
+        if (_lockSwitch.isChecked() == val) return;
+        _lockSwitch.setChecked(val);
     }
 }

@@ -38,6 +38,20 @@ public class RegMap {
     public static int M365_TRIP_KM_REG = 0xb9;
     public static int M365_TRIP_KM_LEN = 2;
 
+    public static int M365_CHECK_TAILLIGHT_REG = 0x7d;
+    public static int M365_CHECK_TAILLIGHT_LEN = 2;
+
+    public static int M365_SET_TAILLIGHT_REG = 0x7d;
+    public static int M365_SET_TAILLIGHT_ON = 2;
+    public static int M365_SET_TAILLIGHT_OFF = 0;
+
+    public static int M365_CHECK_LOCK_REG = 0xb2;
+    public static int M365_CHECK_LOCK_LEN = 2;
+
+    public static int M365_SET_LOCK_ON_REG = 0x70;
+    public static int M365_SET_LOCK_OFF_REG = 0x71;
+    public static int M365_SET_LOCK = 1;
+
     // Second register, for battery ECU?
     public static int MASTER_TO_BATT = 0x22;
     public static int BATT_TO_MASTER = 0x25;

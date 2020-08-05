@@ -111,11 +111,43 @@
         android:layout_below="@+id/textview_tripkm"
         android:layout_alignParentEnd="true"/>
 
+    <TextView
+        android:id="@+id/textview_taillight"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:text="@string/light"
+        android:layout_below="@+id/divider_bot"
+        android:layout_centerHorizontal="true"/>
+
+    <Switch
+        android:id="@+id/switch_taillight"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/textview_total"
+        android:layout_centerHorizontal="true"/>
+
+    <TextView
+        android:id="@+id/textview_lock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:text="@string/lock"
+        android:layout_below="@+id/switch_taillight"
+        android:layout_centerHorizontal="true"/>
+
+    <Switch
+        android:id="@+id/switch_lock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/textview_lock"
+        android:layout_centerHorizontal="true"/>
+
     <androidx.cardview.widget.CardView
         android:id="@+id/cardview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/textview_triptime"
+        android:layout_below="@id/switch_lock"
         android:layout_marginBottom="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginLeft="8dp"

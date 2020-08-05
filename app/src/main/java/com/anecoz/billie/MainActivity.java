@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Location;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -24,6 +25,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.mapbox.android.core.location.LocationEngine;
+import com.mapbox.android.core.location.LocationEngineCallback;
+import com.mapbox.android.core.location.LocationEngineProvider;
+import com.mapbox.android.core.location.LocationEngineRequest;
+import com.mapbox.android.core.location.LocationEngineResult;
 import com.mapbox.android.core.permissions.PermissionsManager;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
@@ -40,7 +46,8 @@ import com.mapbox.mapboxsdk.maps.Style;
 import com.mapbox.mapboxsdk.maps.SupportMapFragment;
 
 
-public class MainActivity extends AppCompatActivity implements IAPIObserver, OnMapReadyCallback {
+public class MainActivity extends AppCompatActivity implements IAPIObserver, OnMapReadyCallback,
+        ControlSwitchListener, LocationEngineCallback<LocationEngineResult> {
     private static class APIEventWrapper {
         public APIEventWrapper(APIEvent event, Response response) {
             _event = event;
@@ -58,7 +65,8 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
     private final int REQUEST_ENABLE_BT = 1;
     private final int REQUEST_PERMISSIONS = 2;
 
-    LocationComponent _locationComponent;
+    private LocationComponent _locationComponent;
+    private LocationEngine _locationEngine;
     MapboxMap _mapboxMap;
     Style _mapStyle;
 
@@ -112,26 +120,32 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
                     if (wrapper._response._command == (byte)RegMap.M365_SPEED_REG) {
                         fragment.setSpeed(wrapper._response._val);
                     }
-                    if (wrapper._response._command == (byte)RegMap.M365_ODOMETER_REG) {
+                    else if (wrapper._response._command == (byte)RegMap.M365_ODOMETER_REG) {
                         fragment.setOdometer(wrapper._response._val);
                     }
-                    if (wrapper._response._command == (byte)RegMap.M365_BATT_REG) {
+                    else if (wrapper._response._command == (byte)RegMap.M365_BATT_REG) {
                         fragment.setBatteryCharge(wrapper._response._val);
                     }
-                    if (wrapper._response._command == (byte)RegMap.M365_TRIP_KM_REG) {
+                    else if (wrapper._response._command == (byte)RegMap.M365_TRIP_KM_REG) {
                         fragment.setTripKm(wrapper._response._val);
                     }
-                    if (wrapper._response._command == (byte)RegMap.BATT_VOLTAGE_REG) {
+                    else if (wrapper._response._command == (byte)RegMap.BATT_VOLTAGE_REG) {
                         fragment.setBatteryVoltage(wrapper._response._val);
                     }
-                    if (wrapper._response._command == (byte)RegMap.M365_TRIPTIME_REG) {
+                    else if (wrapper._response._command == (byte)RegMap.M365_TRIPTIME_REG) {
                         fragment.setTripTime(wrapper._response._val);
                     }
-                    if (wrapper._response._command == (byte)RegMap.M365_FRAMETEMP_REG) {
+                    else if (wrapper._response._command == (byte)RegMap.M365_FRAMETEMP_REG) {
                         fragment.setTemp(wrapper._response._val);
                     }
-                    if (wrapper._response._command == (byte)RegMap.M365_KM_REMAIN_REG) {
+                    else if (wrapper._response._command == (byte)RegMap.M365_KM_REMAIN_REG) {
                         fragment.setRange(wrapper._response._val);
+                    }
+                    else if (wrapper._response._command == (byte)RegMap.M365_CHECK_TAILLIGHT_REG) {
+                        fragment.setTailLight(wrapper._response._bVal);
+                    }
+                    else if (wrapper._response._command == (byte)RegMap.M365_CHECK_LOCK_REG) {
+                        fragment.setLock(wrapper._response._bVal);
                     }
                 }
             }
@@ -172,6 +186,7 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
             public void onStyleLoaded(@NonNull Style style) {
                 _mapStyle = style;
                 enableLocationComponent();
+                initLocationEngine();
             }
         });
     }
@@ -202,10 +217,10 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
             _locationComponent.setLocationComponentEnabled(true);
 
             // Set the component's camera mode
-            _locationComponent.setCameraMode(CameraMode.TRACKING);
+            _locationComponent.setCameraMode(CameraMode.TRACKING_GPS);
 
             // Set the component's render mode
-            _locationComponent.setRenderMode(RenderMode.COMPASS);
+            _locationComponent.setRenderMode(RenderMode.GPS);
 
             // Add the location icon click listener
             //_locationComponent.addOnLocationClickListener(this);
@@ -215,10 +230,45 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
         }
     }
 
-    private Message createMessage(int direction, int command, int len) {
+    private static final long DEFAULT_INTERVAL_IN_MILLISECONDS = 1000L;
+    private static final long DEFAULT_MAX_WAIT_TIME = DEFAULT_INTERVAL_IN_MILLISECONDS * 5;
+
+    @SuppressWarnings( {"MissingPermission"})
+    private void initLocationEngine() {
+        if (PermissionsManager.areLocationPermissionsGranted(this)) {
+            _locationEngine = LocationEngineProvider.getBestLocationEngine(this);
+
+            LocationEngineRequest request = new LocationEngineRequest.Builder(DEFAULT_INTERVAL_IN_MILLISECONDS)
+                    .setPriority(LocationEngineRequest.PRIORITY_HIGH_ACCURACY)
+                    .setMaxWaitTime(DEFAULT_MAX_WAIT_TIME).build();
+
+            _locationEngine.requestLocationUpdates(request, this, getMainLooper());
+            _locationEngine.getLastLocation(this);
+        }
+    }
+
+    @Override
+    public void onTaillight(boolean value) {
+        _bluetoothApi.sendMessage(createMessage(
+                RegMap.MASTER_TO_M365,
+                RegMap.REG_WRITE,
+                RegMap.M365_SET_TAILLIGHT_REG,
+                value ? RegMap.M365_SET_TAILLIGHT_ON : RegMap.M365_SET_TAILLIGHT_OFF));
+    }
+
+    @Override
+    public void onLock(boolean value) {
+        _bluetoothApi.sendMessage(createMessage(
+                RegMap.MASTER_TO_M365,
+                RegMap.REG_WRITE,
+                value ? RegMap.M365_SET_LOCK_ON_REG : RegMap.M365_SET_LOCK_OFF_REG,
+                RegMap.M365_SET_LOCK));
+    }
+
+    private Message createMessage(int direction, int rw, int command, int len) {
         return new Message(
                 direction,
-                RegMap.REG_READ,
+                rw,
                 command,
                 new byte[]{(byte)len});
     }
@@ -231,6 +281,7 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
                 setupBluetooth();
                 if (_mapboxMap != null && _mapStyle != null) {
                     enableLocationComponent();
+                    initLocationEngine();
                 }
             }
             else {
@@ -345,40 +396,62 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
         _requestHandler.post(new Runnable() {
             @Override
             public void run() {
+                boolean first = true;
                 while (_running) {
                     _bluetoothApi.sendMessage(createMessage(
                             RegMap.MASTER_TO_M365,
+                            RegMap.REG_READ,
                             RegMap.M365_SPEED_REG,
                             RegMap.M365_SPEED_LEN));
                     _bluetoothApi.sendMessage(createMessage(
                             RegMap.MASTER_TO_M365,
+                            RegMap.REG_READ,
                             RegMap.M365_ODOMETER_REG,
                             RegMap.M365_ODOMETER_LEN));
                     _bluetoothApi.sendMessage(createMessage(
                             RegMap.MASTER_TO_M365,
+                            RegMap.REG_READ,
                             RegMap.M365_TRIP_KM_REG,
                             RegMap.M365_TRIP_KM_LEN));
                     _bluetoothApi.sendMessage(createMessage(
                             RegMap.MASTER_TO_M365,
+                            RegMap.REG_READ,
                             RegMap.M365_BATT_REG,
                             RegMap.M365_BATT_LEN));
                     _bluetoothApi.sendMessage(createMessage(
                             RegMap.MASTER_TO_BATT,
+                            RegMap.REG_READ,
                             RegMap.BATT_VOLTAGE_REG,
                             RegMap.BATT_VOLTAGE_LEN));
                     _bluetoothApi.sendMessage(createMessage(
                             RegMap.MASTER_TO_M365,
+                            RegMap.REG_READ,
                             RegMap.M365_FRAMETEMP_REG,
                             RegMap.M365_FRAMETEMP_LEN));
                     _bluetoothApi.sendMessage(createMessage(
                             RegMap.MASTER_TO_M365,
+                            RegMap.REG_READ,
                             RegMap.M365_TRIPTIME_REG,
                             RegMap.M365_TRIPTIME_LEN));
                     _bluetoothApi.sendMessage(createMessage(
                             RegMap.MASTER_TO_M365,
+                            RegMap.REG_READ,
                             RegMap.M365_KM_REMAIN_REG,
                             RegMap.M365_KM_REMAIN_LEN));
 
+                    if (first) {
+                        _bluetoothApi.sendMessage(createMessage(
+                                RegMap.MASTER_TO_M365,
+                                RegMap.REG_READ,
+                                RegMap.M365_CHECK_TAILLIGHT_REG,
+                                RegMap.M365_CHECK_TAILLIGHT_LEN));
+                        _bluetoothApi.sendMessage(createMessage(
+                                RegMap.MASTER_TO_M365,
+                                RegMap.REG_READ,
+                                RegMap.M365_CHECK_LOCK_REG,
+                                RegMap.M365_CHECK_LOCK_LEN));
+                        first = false;
+                    }
                     try {
                         Thread.sleep(500);
                     } catch (InterruptedException e) {
@@ -387,5 +460,21 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
                 }
             }
         });
+    }
+
+    @Override
+    public void onSuccess(LocationEngineResult result) {
+        Location location = result.getLastLocation();
+
+        if (location == null) {
+            return;
+        }
+
+        Toast.makeText(this, "New latlng: " + result.getLastLocation().getLatitude() + ", " + result.getLastLocation().getLongitude(),
+                Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onFailure(@NonNull Exception exception) {
     }
 }

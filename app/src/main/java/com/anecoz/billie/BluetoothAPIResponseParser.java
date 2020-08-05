@@ -37,7 +37,7 @@ public class BluetoothAPIResponseParser {
             response._val = val + " C";
         }
         else if (response._command == (byte)RegMap.M365_ODOMETER_REG) {
-            double val = bytesToShort(bytes[7], bytes[6]) / 1000.0;
+            double val = round(bytesToShort(bytes[7], bytes[6]) / 1000.0, 2);
             response._val = val + " km";
         }
         else if (response._command == (byte)RegMap.M365_SPEED_REG) {
@@ -45,7 +45,7 @@ public class BluetoothAPIResponseParser {
             response._val = val + " km/h";
         }
         else if (response._command == (byte)RegMap.M365_TRIP_KM_REG) {
-            double val = bytesToShort(bytes[7], bytes[6]) / 1000.0;
+            double val = round(bytesToShort(bytes[7], bytes[6]) / 1000.0, 2);
             response._val = val + " km";
         }
         else if (response._command == (byte)RegMap.M365_TRIPSPEED_REG) {
@@ -72,6 +72,12 @@ public class BluetoothAPIResponseParser {
         else if (response._command == (byte)RegMap.BATT_CHARGE_COUNT_REG) {
             short val = (short) (bytes[7] + bytes[6]);
             response._val = val + " times";
+        }
+        else if (response._command == (byte)RegMap.M365_CHECK_TAILLIGHT_REG) {
+            response._bVal = bytes[6] == 2;
+        }
+        else if (response._command == (byte)RegMap.M365_CHECK_LOCK_REG) {
+            response._bVal = bytes[6] == 2;
         }
 
         return response;
