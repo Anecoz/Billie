@@ -45,7 +45,7 @@ public class BluetoothAPIResponseParser {
             response._val = val + " km/h";
         }
         else if (response._command == (byte)RegMap.M365_TRIP_KM_REG) {
-            double val = round(bytesToShort(bytes[7], bytes[6]) / 1000.0, 2);
+            double val = round(bytesToShort(bytes[7], bytes[6]) / 100.0, 2);
             response._val = val + " km";
         }
         else if (response._command == (byte)RegMap.M365_TRIPSPEED_REG) {
@@ -54,7 +54,18 @@ public class BluetoothAPIResponseParser {
         }
         else if (response._command == (byte)RegMap.M365_TRIPTIME_REG) {
             short val = bytesToShort(bytes[7], bytes[6]);
-            response._val = val + " s";
+            int minutes = val / 60;
+            int seconds = val % 60;
+
+            String minString = String.valueOf(minutes);
+            if (minutes < 10) {
+                minString = "0" + String.valueOf(minutes);
+            }
+            String secString = String.valueOf(seconds);
+            if (seconds < 10) {
+                secString = "0" + String.valueOf(seconds);
+            }
+            response._val = minString + ":" + secString;
         }
         else if (response._command == (byte)RegMap.BATT_VOLTAGE_REG) {
             double val = bytesToShort(bytes[7], bytes[6]) / 100.0;

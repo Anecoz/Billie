@@ -37,6 +37,7 @@ import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.location.LocationComponent;
 import com.mapbox.mapboxsdk.location.LocationComponentActivationOptions;
 import com.mapbox.mapboxsdk.location.LocationComponentOptions;
+import com.mapbox.mapboxsdk.location.OnCameraTrackingChangedListener;
 import com.mapbox.mapboxsdk.location.modes.CameraMode;
 import com.mapbox.mapboxsdk.location.modes.RenderMode;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
@@ -119,12 +120,14 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
 
                     if (wrapper._response._command == (byte)RegMap.M365_SPEED_REG) {
                         fragment.setSpeed(wrapper._response._val);
+                        Statistics.addSpeedEntry(wrapper._response._val);
                     }
                     else if (wrapper._response._command == (byte)RegMap.M365_ODOMETER_REG) {
                         fragment.setOdometer(wrapper._response._val);
                     }
                     else if (wrapper._response._command == (byte)RegMap.M365_BATT_REG) {
                         fragment.setBatteryCharge(wrapper._response._val);
+                        Statistics.addBattEntry(wrapper._response._val);
                     }
                     else if (wrapper._response._command == (byte)RegMap.M365_TRIP_KM_REG) {
                         fragment.setTripKm(wrapper._response._val);
@@ -199,6 +202,7 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
                     .elevation(5)
                     .accuracyAlpha(.3f)
                     .accuracyColor(Color.RED)
+                    .trackingGesturesManagement(true)
                     //.foregroundDrawable(R.drawable.android_custom_location_icon)
                     .build();
 
@@ -265,6 +269,16 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
                 RegMap.M365_SET_LOCK));
     }
 
+    @Override
+    public void onRecenter() {
+        _locationComponent.setCameraMode(CameraMode.TRACKING_GPS);
+    }
+
+    @Override
+    public void onLog(boolean value) {
+        Statistics.setEnabled(value);
+    }
+
     private Message createMessage(int direction, int rw, int command, int len) {
         return new Message(
                 direction,
@@ -293,6 +307,8 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        Statistics.cleanup();
 
         _running = false;
         try {
@@ -452,6 +468,8 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
                                 RegMap.M365_CHECK_LOCK_LEN));
                         first = false;
                     }
+
+                    Statistics.writeToDb();
                     try {
                         Thread.sleep(500);
                     } catch (InterruptedException e) {
@@ -470,8 +488,9 @@ public class MainActivity extends AppCompatActivity implements IAPIObserver, OnM
             return;
         }
 
-        Toast.makeText(this, "New latlng: " + result.getLastLocation().getLatitude() + ", " + result.getLastLocation().getLongitude(),
-                Toast.LENGTH_SHORT).show();
+        Statistics.addLatLngEntry(
+                result.getLastLocation().getLatitude(),
+                result.getLastLocation().getLongitude());
     }
 
     @Override

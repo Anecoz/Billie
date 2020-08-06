@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -17,6 +18,8 @@ public class FirstFragment extends Fragment {
     private ControlSwitchListener _listener;
     Switch _tailSwitch;
     Switch _lockSwitch;
+    Switch _logSwitch;
+    Button _recenterBtn;
 
     @Override
     public View onCreateView(
@@ -39,6 +42,8 @@ public class FirstFragment extends Fragment {
 
         _tailSwitch = (Switch) view.findViewById(R.id.switch_taillight);
         _lockSwitch = (Switch) view.findViewById(R.id.switch_lock);
+        _logSwitch = (Switch) view.findViewById(R.id.switch_log);
+        _recenterBtn = (Button) view.findViewById(R.id.button_recenter);
 
         _tailSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
@@ -51,6 +56,20 @@ public class FirstFragment extends Fragment {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                 _listener.onLock(b);
+            }
+        });
+
+        _logSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                _listener.onLog(b);
+            }
+        });
+
+        _recenterBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                _listener.onRecenter();
             }
         });
     }

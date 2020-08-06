@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:mapbox="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -143,11 +144,27 @@
         android:layout_below="@id/textview_lock"
         android:layout_centerHorizontal="true"/>
 
+    <TextView
+        android:id="@+id/textview_log"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:text="@string/log"
+        android:layout_below="@+id/switch_lock"
+        android:layout_centerHorizontal="true"/>
+
+    <Switch
+        android:id="@+id/switch_log"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@id/textview_log" />
+
     <androidx.cardview.widget.CardView
         android:id="@+id/cardview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/switch_lock"
+        android:layout_below="@id/switch_log"
         android:layout_marginBottom="8dp"
         android:layout_marginEnd="8dp"
         android:layout_marginLeft="8dp"
@@ -161,6 +178,13 @@
             android:id="@+id/container"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
-    </androidx.cardview.widget.CardView>
 
+        <Button
+            android:id="@+id/button_recenter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:text="@string/recenter" />
+
+    </androidx.cardview.widget.CardView>
 </RelativeLayout>

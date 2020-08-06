@@ -110,7 +110,6 @@ public class BluetoothAPI extends BluetoothGattCallback {
     public void sendMessage(Message message) {
         if (msgTypeInQueue(message._command)) return;
         _requestQueue.add(message);
-        Log.i(TAG, "Req queue size: " + _requestQueue.size());
     }
 
     private boolean msgTypeInQueue(int command) {
@@ -192,20 +191,16 @@ public class BluetoothAPI extends BluetoothGattCallback {
     @Override
     public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
         super.onCharacteristicRead(gatt, characteristic, status);
-        Log.i(TAG, "onCharacteristicRead, status: " + status);
-
     }
 
     @Override
     public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
         super.onCharacteristicWrite(gatt, characteristic, status);
-        Log.i(TAG, "onCharacteristicWrite, status: " + status + ", val: " + Arrays.toString(characteristic.getValue()));
     }
 
     @Override
     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
         super.onCharacteristicChanged(gatt, characteristic);
-        Log.i(TAG, "onCharacteristicChanged, val: " + Arrays.toString(characteristic.getValue()));
         _responseQueue.add(_parser.parse(characteristic.getValue()));
         _outgoingMessage = null;
     }
